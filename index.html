@@ -1,0 +1,1378 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Workflow Output Reader</title>
+  <style>
+    :root {
+      font-family: "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+      color: #183233;
+      background: #f2f5f1;
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+      --ink: #183233;
+      --muted: #647674;
+      --line: #d9e2dc;
+      --paper: #ffffff;
+      --canvas: #f2f5f1;
+      --green: #126b61;
+      --green-dark: #0d514b;
+      --green-pale: #e6f1ed;
+      --coral: #b65f42;
+      --code: #f7f9f7;
+      --shadow: 0 18px 55px rgba(28, 55, 49, .07);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-width: 320px;
+      min-height: 100vh;
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(18, 107, 97, .035) 1px, transparent 1px) 0 0 / 36px 36px,
+        var(--canvas);
+    }
+
+    button, input { font: inherit; }
+
+    button:focus-visible, input:focus-visible, summary:focus-visible {
+      outline: 3px solid rgba(18, 107, 97, .25);
+      outline-offset: 2px;
+    }
+
+    .top-rule { height: 5px; background: var(--green); }
+
+    .shell {
+      width: min(1240px, calc(100% - 48px));
+      margin: 0 auto;
+      padding: 34px 0 64px;
+    }
+
+    .masthead {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 24px;
+      padding-bottom: 25px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      margin: 0 0 10px;
+      color: var(--green);
+      font-family: Georgia, serif;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1.4px;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      color: var(--ink);
+      font-family: Georgia, "Malgun Gothic", serif;
+      font-size: 34px;
+      font-weight: 500;
+      line-height: 1.2;
+    }
+
+    .lede {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .masthead-mark {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding-top: 5px;
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .mark-square {
+      display: grid;
+      width: 34px;
+      height: 34px;
+      place-items: center;
+      border: 1px solid #a9c9bd;
+      color: var(--green-dark);
+      background: var(--green-pale);
+      font-family: Georgia, serif;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 22px 0 18px;
+    }
+
+    .folder-state {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .state-dot {
+      width: 8px;
+      height: 8px;
+      flex: 0 0 auto;
+      border-radius: 50%;
+      background: #9aa9a2;
+    }
+
+    .state-dot.ready { background: var(--green); }
+
+    .folder-name {
+      overflow: hidden;
+      color: var(--ink);
+      font-weight: 700;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .actions { display: flex; flex: 0 0 auto; gap: 8px; }
+
+    .button {
+      min-height: 38px;
+      padding: 0 13px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      color: var(--ink);
+      background: var(--paper);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+      transition: border-color .16s ease, background .16s ease, transform .16s ease;
+    }
+
+    .button:hover { border-color: #9ab9ad; background: #f9fcfa; }
+    .button:active { transform: translateY(1px); }
+
+    .button.primary {
+      border-color: var(--green);
+      color: #fff;
+      background: var(--green);
+    }
+
+    .button.primary:hover { border-color: var(--green-dark); background: var(--green-dark); }
+    .button:disabled { cursor: default; opacity: .45; }
+
+    .tabs {
+      display: flex;
+      min-height: 54px;
+      gap: 4px;
+      overflow-x: auto;
+      border-bottom: 1px solid var(--line);
+      scrollbar-width: thin;
+    }
+
+    .tab {
+      position: relative;
+      display: inline-flex;
+      min-width: max-content;
+      align-items: center;
+      gap: 10px;
+      padding: 0 17px;
+      border: 0;
+      color: #687a76;
+      background: transparent;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .tab::after {
+      position: absolute;
+      right: 12px;
+      bottom: -1px;
+      left: 12px;
+      height: 3px;
+      background: transparent;
+      content: "";
+    }
+
+    .tab[aria-selected="true"] { color: var(--green-dark); }
+    .tab[aria-selected="true"]::after { background: var(--green); }
+
+    .tab-number {
+      color: #899993;
+      font-family: Georgia, serif;
+      font-size: 12px;
+      font-weight: 400;
+    }
+
+    .tab[aria-selected="true"] .tab-number { color: var(--green); }
+
+    .viewer {
+      min-height: 420px;
+      margin-top: 20px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: var(--paper);
+      box-shadow: var(--shadow);
+      animation: arrive .28s ease both;
+    }
+
+    @keyframes arrive {
+      from { opacity: .5; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .filebar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 17px 21px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcfa;
+    }
+
+    .file-title { min-width: 0; }
+
+    .file-title strong {
+      display: block;
+      overflow: hidden;
+      color: var(--ink);
+      font-family: Georgia, "Malgun Gothic", serif;
+      font-size: 17px;
+      font-weight: 600;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .file-meta {
+      display: block;
+      margin-top: 5px;
+      color: var(--muted);
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 11px;
+    }
+
+    .file-actions { display: flex; flex: 0 0 auto; gap: 7px; }
+
+    .file-actions .button { min-height: 32px; padding: 0 10px; font-size: 11px; }
+
+    .tree {
+      padding: 18px 21px 26px;
+      font-size: 13px;
+    }
+
+    .json-group { margin: 0; }
+
+    .json-group > summary {
+      display: flex;
+      min-height: 34px;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 8px;
+      border-radius: 3px;
+      color: var(--ink);
+      cursor: pointer;
+      list-style: none;
+    }
+
+    .json-group > summary::-webkit-details-marker { display: none; }
+
+    .json-group > summary::before {
+      width: 14px;
+      color: #7b8b85;
+      content: "+";
+      font-family: Consolas, monospace;
+      font-size: 14px;
+      text-align: center;
+    }
+
+    .json-group[open] > summary::before { content: "−"; }
+    .json-group > summary:hover { background: #f3f7f4; }
+
+    .json-key {
+      color: #24534d;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 12px;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+
+    .json-count {
+      color: #87958e;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 10px;
+    }
+
+    .json-children {
+      margin: 1px 0 5px 16px;
+      padding-left: 11px;
+      border-left: 1px solid #e5ebe6;
+    }
+
+    .json-row {
+      display: grid;
+      grid-template-columns: minmax(130px, 230px) minmax(0, 1fr);
+      align-items: start;
+      gap: 13px;
+      min-height: 31px;
+      padding: 6px 9px;
+      border-radius: 3px;
+    }
+
+    .json-row:hover { background: #f7f9f7; }
+
+    .json-value {
+      min-width: 0;
+      color: #385b4b;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 12px;
+      line-height: 1.55;
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+    }
+
+    .json-value.number { color: #955739; }
+    .json-value.boolean { color: #176e76; }
+    .json-value.null { color: #89938d; font-style: italic; }
+    .json-value.unknown { color: var(--coral); }
+
+    .stage-page { padding: 24px; }
+    .stage-intro { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; padding: 2px 0 20px; border-bottom: 1px solid var(--line); }
+    .stage-intro h2 { margin: 0; color: var(--ink); font-family: Georgia, "Malgun Gothic", serif; font-size: 25px; font-weight: 500; line-height: 1.3; }
+    .stage-intro p { max-width: 760px; margin: 7px 0 0; color: var(--muted); font-size: 13px; line-height: 1.65; }
+    .stage-kicker { margin: 0 0 8px; color: var(--green); font-size: 10px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; }
+    .stage-count { flex: 0 0 auto; color: var(--muted); font-family: Georgia, serif; font-size: 13px; }
+    .boundary-band { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; margin: 17px 0 27px; background: var(--line); border: 1px solid var(--line); }
+    .boundary-item { min-width: 0; padding: 13px 15px; background: #fbfcfa; }
+    .boundary-item span, .fact-label { display: block; margin-bottom: 5px; color: #7b8982; font-size: 10px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; }
+    .boundary-item strong { display: block; color: var(--ink); font-size: 12px; font-weight: 600; line-height: 1.55; overflow-wrap: anywhere; }
+    .view-section { margin: 25px 0 0; }
+    .section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+    .section-heading h3 { margin: 0; color: var(--ink); font-size: 15px; font-weight: 700; }
+    .section-heading span { color: var(--muted); font-size: 11px; }
+    .work-grid, .decision-grid, .baseline-grid, .map-support-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px; }
+    .work-card, .decision-card, .metric-tile, .support-card { min-width: 0; border: 1px solid var(--line); background: var(--paper); }
+    .work-card { padding: 15px 16px; }
+    .card-topline { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 9px; }
+    .id-tag { color: var(--green); font-family: Consolas, "Courier New", monospace; font-size: 10px; font-weight: 700; }
+    .evidence-tag, .status-tag, .type-tag { display: inline-flex; align-items: center; width: max-content; max-width: 100%; padding: 4px 7px; border: 1px solid #d6e5df; color: #37665a; background: #f0f7f3; font-size: 9px; font-weight: 700; overflow-wrap: anywhere; }
+    .evidence-tag.hypothesis { border-color: #eed7c8; color: #9e563a; background: #fbf2ec; }
+    .evidence-tag.stated { border-color: #d9e1ce; color: #66743d; background: #f4f6ec; }
+    .work-card h4, .decision-card h4 { margin: 0; color: var(--ink); font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+    .work-card > p { margin: 7px 0 0; color: #566b64; font-size: 12px; line-height: 1.65; }
+    .fact-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px 18px; margin-top: 14px; padding-top: 12px; border-top: 1px solid #edf0ec; }
+    .fact-value { color: #39524a; font-size: 11px; line-height: 1.55; overflow-wrap: anywhere; white-space: pre-wrap; }
+    .rating-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 13px; }
+    .rating-chip { display: flex; align-items: center; gap: 6px; padding: 5px 7px; border: 1px solid #e4e9e2; color: #536960; background: #fafbf9; font-size: 10px; }
+    .rating-chip strong { color: var(--ink); }
+    .flow-list { margin: 0; padding: 0; list-style: none; counter-reset: task-flow; }
+    .task-item { position: relative; margin: 0; padding: 0 0 12px 27px; border-left: 1px solid #b7cec3; }
+    .task-item:last-child { padding-bottom: 0; border-left-color: transparent; }
+    .task-item::before { position: absolute; top: 0; left: -6px; width: 11px; height: 11px; border: 2px solid var(--green); border-radius: 50%; background: white; content: ""; }
+    .task-card { padding: 10px 13px; border: 1px solid var(--line); background: #fff; }
+    .task-title-row { display: flex; align-items: baseline; gap: 9px; }
+    .task-sequence { flex: 0 0 auto; color: #9a6b49; font-family: Georgia, serif; font-size: 11px; }
+    .task-card h4 { margin: 0; color: var(--ink); font-size: 13px; line-height: 1.5; }
+    .task-id { flex: 0 0 auto; margin-left: auto; color: #75857e; font-family: Consolas, monospace; font-size: 10px; }
+    .task-facts { display: flex; flex-wrap: wrap; gap: 7px 15px; margin: 7px 0 0; color: #66766f; font-size: 10px; line-height: 1.5; }
+    .task-children { margin: 10px 0 0 19px; padding: 10px 0 0 13px; border-top: 1px dashed #d9e2dc; }
+    .marker-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    .marker-column { min-width: 0; padding: 12px; border-top: 2px solid #89b3a3; background: #f5f8f5; }
+    .marker-column h4 { margin: 0 0 9px; color: var(--green-dark); font-size: 11px; }
+    .marker-item { padding: 9px 0; border-top: 1px solid #e0e8e1; }
+    .marker-item:first-of-type { border-top: 0; }
+    .marker-item p { margin: 4px 0 0; color: #435b52; font-size: 11px; line-height: 1.55; }
+    .decision-card { padding: 15px; border-top: 3px solid #79a998; }
+    .decision-card .card-topline { margin-bottom: 7px; }
+    .decision-card h4 { font-size: 14px; }
+    .decision-meta { margin: 6px 0 0; color: #78867f; font-size: 10px; }
+    .detail-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px 17px; margin-top: 14px; }
+    .detail-block { min-width: 0; }
+    .detail-block h5 { margin: 0 0 5px; color: #677b72; font-size: 10px; }
+    .detail-block p { margin: 0; color: #3d554b; font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; white-space: pre-wrap; }
+    .detail-block ul { margin: 0; padding-left: 16px; color: #3d554b; font-size: 11px; line-height: 1.6; }
+    .detail-block li + li { margin-top: 3px; }
+    .exception-note { margin-top: 12px; padding: 10px 11px; border-left: 2px solid var(--coral); background: #fbf5f0; }
+    .exception-note strong { display: block; margin-bottom: 4px; color: #8d503b; font-size: 10px; }
+    .exception-note p { margin: 3px 0 0; color: #694d42; font-size: 10px; line-height: 1.55; }
+    .plain-list { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+    .plain-list li { padding: 9px 11px; border-left: 2px solid #c7d7ce; color: #465d53; background: #f7f9f6; font-size: 11px; line-height: 1.55; }
+    .map-canvas { display: grid; gap: 0; }
+    .map-transition { display: grid; grid-template-columns: minmax(0, 1fr) minmax(92px, .36fr) minmax(0, 1fr); align-items: center; gap: 10px; padding: 7px 10px; border-bottom: 1px solid #edf0ed; }
+    .map-transition:nth-child(odd) { background: #fbfcfa; }
+    .map-node { min-width: 0; padding: 9px 11px; border: 1px solid #d9e4dd; border-left: 3px solid #5e9784; background: white; }
+    .map-node.exception { border-left-color: var(--coral); background: #fffaf7; }
+    .map-node.decision { border-left-color: #bd9456; }
+    .map-node.output { border-left-color: #497a68; background: #f3f8f5; }
+    .map-node small { display: block; margin-bottom: 4px; color: #7a8982; font-family: Consolas, monospace; font-size: 9px; }
+    .map-node strong { display: -webkit-box; overflow: hidden; color: var(--ink); font-size: 11px; font-weight: 600; line-height: 1.45; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+    .map-arrow { display: grid; justify-items: center; gap: 4px; color: #55766a; text-align: center; }
+    .map-arrow::after { color: var(--green); content: "→"; font-size: 19px; line-height: 1; }
+    .map-arrow span { color: #75867e; font-size: 9px; line-height: 1.35; }
+    .map-arrow em { color: #a25b3f; font-size: 8px; font-style: normal; }
+    .flowchart { display: grid; justify-items: center; gap: 0; max-width: 940px; margin: 0 auto; padding: 8px 0; }
+    .flow-node-wrap { display: grid; justify-items: center; width: 100%; }
+    .flowchart-node { display: grid; grid-template-columns: 82px minmax(0, 1fr); align-items: center; gap: 12px; width: min(100%, 520px); min-height: 56px; padding: 10px 14px; border: 1px solid #cddbd2; border-left: 4px solid #629783; background: #fff; }
+    .flowchart-node.trigger, .flowchart-node.end { width: min(100%, 420px); border: 1px solid #7ba997; border-radius: 24px; background: #f1f8f4; }
+    .flowchart-node.decision { border-left-color: #bb965c; background: #fffdf7; }
+    .flowchart-node.exception { border-left-color: var(--coral); background: #fff9f6; }
+    .flowchart-node.output { border-left-color: #3d7967; background: #f3f8f5; }
+    .flowchart-node.decision { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; width: min(100%, 250px); min-height: 150px; gap: 4px; padding: 36px 38px; border: 0; background: transparent; text-align: center; }
+    .flowchart-node.decision::before, .flowchart-node.decision::after { position: absolute; inset: 0; content: ""; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+    .flowchart-node.decision::before { background: var(--group-color, #b99459); }
+    .flowchart-node.decision::after { inset: 2px; background: #fffdf7; }
+    .flowchart-node.decision small, .flowchart-node.decision strong { position: relative; z-index: 1; }
+    .flowchart-node.decision strong { font-size: 11px; }
+    .flowchart-node small { color: #71837a; font-family: Consolas, monospace; font-size: 9px; line-height: 1.4; }
+    .flowchart-node strong { color: var(--ink); font-size: 12px; font-weight: 600; line-height: 1.5; overflow-wrap: anywhere; }
+    .flowchart-node[class*="group-T"] { border-color: var(--group-color); border-left-color: var(--group-color); }
+    .task-overview { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin: 14px 0 26px; }
+    .task-overview-item { min-width: 0; padding: 12px; border: 1px solid #dce5de; border-top: 3px solid var(--group-color, #8aa99a); background: #fbfcfa; }
+    .task-overview-head { display: flex; align-items: flex-start; gap: 8px; }
+    .task-overview-id { flex: 0 0 auto; color: var(--group-color, var(--green)); font-family: Consolas, monospace; font-size: 10px; font-weight: 700; }
+    .task-overview-item h4 { margin: 0; color: var(--ink); font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
+    .task-overview-output { margin: 7px 0 0; color: #697a72; font-size: 10px; line-height: 1.5; overflow-wrap: anywhere; }
+    .task-overview-steps { display: grid; gap: 5px; margin: 10px 0 0; padding: 9px 0 0; border-top: 1px solid #e8ede8; list-style: none; }
+    .task-overview-step { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 6px; color: #43594f; font-size: 10px; line-height: 1.45; }
+    .task-overview-step span { color: #7a8982; font-family: Consolas, monospace; font-size: 9px; }
+    .task-overview-item.group-T01, .flowchart-node.group-T01 { --group-color: #147d70; }
+    .task-overview-item.group-T02, .flowchart-node.group-T02 { --group-color: #987a22; }
+    .task-overview-item.group-T03, .flowchart-node.group-T03 { --group-color: #b4543e; }
+    .task-overview-item.group-T04, .flowchart-node.group-T04 { --group-color: #376fa5; }
+    .task-overview-item.group-T05, .flowchart-node.group-T05 { --group-color: #8a5b77; }
+    .task-overview-item.group-T06, .flowchart-node.group-T06 { --group-color: #688139; }
+    .task-overview-item.group-T07, .flowchart-node.group-T07 { --group-color: #a3652a; }
+    .task-overview-item.group-T08, .flowchart-node.group-T08 { --group-color: #307c87; }
+    .task-overview-item.group-T09, .flowchart-node.group-T09 { --group-color: #a44858; }
+    .task-overview-item.group-T10, .flowchart-node.group-T10 { --group-color: #596b78; }
+    .flow-connector { display: grid; justify-items: center; min-height: 38px; color: #799287; }
+    .flow-connector-label { max-width: min(90vw, 360px); padding: 4px 8px; border: 1px solid #e0e9e2; color: #63796f; background: #f7faf7; font-size: 9px; line-height: 1.4; text-align: center; }
+    .flow-connector-arrow { color: var(--green); font-size: 17px; line-height: 1; }
+    .flow-evidence { color: #a25b3f; font-size: 8px; font-weight: 700; }
+    .flow-branches { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 13px; width: 100%; padding: 0 10px 12px; }
+    .flow-branch { display: grid; justify-items: center; min-width: 0; padding: 10px; border: 1px solid #e2e8e2; background: #f9fbf8; }
+    .flow-branch-label { max-width: 100%; margin-bottom: 8px; padding: 4px 8px; color: #6c5c3d; background: #f6f1e5; font-size: 10px; font-weight: 700; line-height: 1.4; text-align: center; overflow-wrap: anywhere; }
+    .flow-branch .flowchart-node { grid-template-columns: 70px minmax(0, 1fr); }
+    .flow-branch .flow-branches { grid-template-columns: 1fr; padding-right: 0; padding-left: 0; }
+    .flow-backlink, .flow-join, .flow-stop { width: min(100%, 520px); margin: 6px 0; padding: 8px 11px; border: 1px dashed #d4a283; color: #90553b; background: #fff8f3; font-size: 10px; line-height: 1.5; text-align: center; }
+    .flow-join { border-color: #9cb9a9; color: #416c58; background: #f3f8f4; }
+    .flow-stop { border-color: #d8dfd9; color: #687970; background: #f7f9f7; }
+    .flowchart-subsection { width: 100%; margin-top: 20px; padding-top: 15px; border-top: 1px dashed #ccd9d1; }
+    .flowchart-subsection h4 { margin: 0 0 10px; color: #62756c; font-size: 11px; }
+    .flowchart-subsection .flowchart { padding: 0; }
+    .flow-unlinked-start { width: min(100%, 520px); margin: 9px 0 0; padding: 7px 10px; border: 1px dashed #d5a382; color: #8a533c; background: #fff8f3; font-size: 10px; line-height: 1.5; text-align: center; }
+    .metric-tile { padding: 13px 14px; border-top: 3px solid #94b5a5; }
+    .metric-tile.unknown { border-top-color: #c98967; }
+    .metric-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .metric-head strong { color: var(--ink); font-size: 11px; }
+    .status-tag.measured { border-color: #b8d6c8; color: #27644d; background: #edf7f1; }
+    .status-tag.estimated { border-color: #e6d7b9; color: #866a32; background: #faf6e9; }
+    .status-tag.unknown { border-color: #eed3c3; color: #9c5338; background: #fbf1eb; }
+    .metric-value { margin: 9px 0 6px; color: #24433a; font-family: Georgia, "Malgun Gothic", serif; font-size: 17px; line-height: 1.35; overflow-wrap: anywhere; }
+    .metric-evidence, .metric-plan { margin: 4px 0 0; color: #6a7a72; font-size: 10px; line-height: 1.5; }
+    .support-card { padding: 12px 14px; }
+    .support-card h4 { margin: 0 0 8px; color: var(--ink); font-size: 12px; }
+    .support-item { padding: 7px 0; border-top: 1px solid #edf0ec; color: #53675e; font-size: 10px; line-height: 1.5; }
+    .support-item:first-of-type { border-top: 0; }
+    .support-item strong { color: #294c40; }
+    .raw-data { margin-top: 28px; border-top: 1px solid var(--line); }
+    .raw-data > summary { padding: 12px 2px; color: #66766f; cursor: pointer; font-size: 11px; font-weight: 700; }
+    .raw-data .tree { padding: 4px 0 0; }
+    .empty-note { padding: 12px; color: #76857e; background: #f7f9f6; font-size: 11px; }
+
+    .empty-state {
+      display: grid;
+      min-height: 420px;
+      place-content: center;
+      justify-items: center;
+      padding: 35px;
+      text-align: center;
+    }
+
+    .empty-index {
+      display: grid;
+      width: 48px;
+      height: 48px;
+      place-items: center;
+      margin-bottom: 15px;
+      border: 1px solid #bad1c7;
+      color: var(--green);
+      background: var(--green-pale);
+      font-family: Georgia, serif;
+      font-size: 18px;
+    }
+
+    .empty-state h2 { margin: 0; font-size: 16px; font-weight: 700; }
+    .empty-state p { margin: 8px 0 18px; color: var(--muted); font-size: 13px; line-height: 1.6; }
+    .empty-state .button { min-height: 40px; }
+    .status-message { margin: 10px 0 0; color: var(--coral); font-size: 12px; }
+    .error-box { margin: 20px; padding: 16px; border-left: 3px solid var(--coral); color: #743f30; background: #fbf3ef; font-size: 13px; line-height: 1.6; }
+    .error-box pre { overflow: auto; color: #5d504c; font-family: Consolas, monospace; font-size: 11px; }
+
+    .footnote {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 13px 2px 0;
+      color: #7a8983;
+      font-size: 11px;
+    }
+
+    [hidden] { display: none !important; }
+
+    @media (max-width: 700px) {
+      .shell { width: min(100% - 28px, 1240px); padding-top: 23px; }
+      .masthead { padding-bottom: 19px; }
+      .masthead-mark { display: none; }
+      h1 { font-size: 29px; }
+      .controls { align-items: flex-start; flex-direction: column; padding: 17px 0 14px; }
+      .actions { width: 100%; }
+      .actions .button { flex: 1; }
+      .tabs { min-height: 49px; }
+      .tab { padding: 0 12px; }
+      .viewer { min-height: 350px; margin-top: 14px; }
+      .filebar { align-items: flex-start; flex-direction: column; padding: 15px; }
+      .tree { padding: 13px 10px 20px; }
+      .json-row { grid-template-columns: minmax(95px, 34%) minmax(0, 1fr); gap: 8px; padding-right: 6px; padding-left: 6px; }
+      .json-key, .json-value { font-size: 11px; }
+      .json-children { margin-left: 8px; padding-left: 6px; }
+      .empty-state { min-height: 350px; }
+      .footnote { flex-direction: column; gap: 5px; }
+      .stage-page { padding: 15px 12px; }
+      .stage-intro { align-items: flex-start; flex-direction: column; gap: 8px; }
+      .stage-intro h2 { font-size: 21px; }
+      .boundary-band, .work-grid, .decision-grid, .baseline-grid, .map-support-grid, .marker-strip { grid-template-columns: 1fr; }
+      .boundary-band { gap: 0; }
+      .boundary-item + .boundary-item { border-top: 1px solid var(--line); }
+      .fact-grid, .detail-columns { grid-template-columns: 1fr; gap: 9px; }
+      .map-transition { grid-template-columns: minmax(0, 1fr) 54px minmax(0, 1fr); gap: 5px; padding: 6px 2px; }
+      .map-node { padding: 7px; }
+      .map-node strong { font-size: 10px; }
+      .map-arrow span { font-size: 8px; }
+      .task-children { margin-left: 8px; padding-left: 9px; }
+      .flowchart-node, .flowchart-node.trigger, .flowchart-node.end { grid-template-columns: 67px minmax(0, 1fr); width: 100%; gap: 7px; padding: 9px; }
+      .flowchart-node strong { font-size: 11px; }
+      .flowchart-node.decision { grid-template-columns: minmax(0, 1fr); width: min(100%, 224px); min-height: 132px; padding: 31px 34px; }
+      .flow-branches { grid-template-columns: 1fr; padding-right: 0; padding-left: 0; }
+      .flow-branch { width: 100%; }
+      .task-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+      .task-overview-item { padding: 9px; }
+      .task-overview-step { grid-template-columns: 26px minmax(0, 1fr); gap: 4px; font-size: 9px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="top-rule" aria-hidden="true"></div>
+  <div class="shell">
+    <header class="masthead">
+      <div>
+        <p class="eyebrow">Workflow Transformation / Local Artifacts</p>
+        <h1>Output Reader</h1>
+        <p class="lede">단계별 인계 산출물을 한 화면에서 살펴봅니다.</p>
+      </div>
+      <div class="masthead-mark" aria-label="Workflow stages">
+        <span class="mark-square">01—04</span>
+        <span>Workflow stages</span>
+      </div>
+    </header>
+
+    <section class="controls" aria-label="출력 폴더">
+      <div class="folder-state" aria-live="polite">
+        <span id="stateDot" class="state-dot" aria-hidden="true"></span>
+        <span id="folderLabel">불러온 폴더 없음</span>
+        <strong id="folderName" class="folder-name"></strong>
+      </div>
+      <div class="actions">
+        <button id="loadFiles" class="button primary" type="button">폴더 불러오기</button>
+        <button id="expandAll" class="button" type="button" disabled>모두 펼치기</button>
+        <button id="collapseAll" class="button" type="button" disabled>모두 접기</button>
+      </div>
+      <input id="jsonFiles" type="file" webkitdirectory directory multiple hidden>
+    </section>
+
+    <nav id="tabs" class="tabs" role="tablist" aria-label="Workflow 단계" hidden></nav>
+
+    <main id="mainContent">
+      <section id="welcome" class="viewer empty-state" aria-live="polite">
+        <div>
+          <div class="empty-index" aria-hidden="true">JSON</div>
+          <h2 id="emptyTitle">단계별 JSON을 불러오세요</h2>
+          <p id="emptyMessage">폴더 불러오기를 눌러 workflow-output 폴더를 선택하세요.</p>
+          <button id="welcomeLoad" class="button primary" type="button">폴더 불러오기</button>
+          <p id="statusMessage" class="status-message" hidden></p>
+        </div>
+      </section>
+      <section id="viewer" class="viewer" aria-live="polite" hidden>
+        <div class="filebar">
+          <div class="file-title">
+            <strong id="activeTitle"></strong>
+            <span id="activeMeta" class="file-meta"></span>
+          </div>
+          <div class="file-actions">
+            <button id="copyJson" class="button" type="button">JSON 복사</button>
+          </div>
+        </div>
+        <div id="tree" class="tree"></div>
+      </section>
+    </main>
+
+    <footer class="footnote">
+      <span>빈 필드와 빈 배열은 표시하지 않습니다. `Unknown` 값은 그대로 보존됩니다.</span>
+      <span id="fileCount"></span>
+    </footer>
+  </div>
+
+  <script>
+    (() => {
+      const stages = [
+        { id: "discover", file: "discover-result.json", label: "Discover", number: "01" },
+        { id: "decompose", file: "decompose-result.json", label: "Decompose", number: "02" },
+        { id: "deep-dive", file: "deep-dive-result.json", label: "Deep Dive", number: "03" },
+        { id: "map", file: "map-result.json", label: "Map", number: "04" }
+      ];
+
+      const state = { outputs: [], activeId: null };
+      const jsonFiles = document.getElementById("jsonFiles");
+      const tabs = document.getElementById("tabs");
+      const welcome = document.getElementById("welcome");
+      const viewer = document.getElementById("viewer");
+      const tree = document.getElementById("tree");
+      const statusMessage = document.getElementById("statusMessage");
+      const expandAll = document.getElementById("expandAll");
+      const collapseAll = document.getElementById("collapseAll");
+
+      document.getElementById("loadFiles").addEventListener("click", () => jsonFiles.click());
+      document.getElementById("welcomeLoad").addEventListener("click", () => jsonFiles.click());
+      jsonFiles.addEventListener("change", loadSelectedFiles);
+      expandAll.addEventListener("click", () => tree.querySelectorAll("details").forEach((item) => { item.open = true; }));
+      collapseAll.addEventListener("click", () => tree.querySelectorAll("details").forEach((item) => { item.open = false; }));
+      document.getElementById("copyJson").addEventListener("click", copyActiveJson);
+
+      async function loadSelectedFiles(event) {
+        const files = Array.from(event.target.files || []);
+        const relativePath = files.find((file) => file.webkitRelativePath)?.webkitRelativePath || "";
+        const selectedFolder = relativePath.split("/")[0] || "선택한 폴더";
+        event.target.value = "";
+        const selected = stages.map((stage) => {
+          const file = files.find((item) => item.name === stage.file);
+          return file ? { stage, file } : null;
+        }).filter(Boolean);
+
+        const results = await Promise.all(selected.map(async ({ stage, file }) => {
+          const text = await file.text();
+          if (!text.trim()) return null;
+          try {
+            const data = JSON.parse(text);
+            if (isEmpty(data)) return null;
+            return { stage, file, text, data, error: null };
+          } catch (error) {
+            return { stage, file, text, data: null, error };
+          }
+        }));
+
+        state.outputs = results.filter(Boolean);
+        document.getElementById("folderLabel").textContent = state.outputs.length ? "불러온 폴더" : "표시할 산출물 없음";
+        document.getElementById("folderName").textContent = state.outputs.length ? selectedFolder : "";
+        document.getElementById("stateDot").classList.toggle("ready", state.outputs.length > 0);
+        document.getElementById("fileCount").textContent = state.outputs.length ? `${state.outputs.length}개 단계 표시` : "";
+
+        if (!state.outputs.length) {
+          tabs.hidden = true;
+          viewer.hidden = true;
+          welcome.hidden = false;
+          document.getElementById("emptyTitle").textContent = files.length ? "표시할 산출물이 없습니다" : "단계별 JSON을 불러오세요";
+          document.getElementById("emptyMessage").textContent = files.length
+            ? "선택한 폴더에서 내용이 있는 Stage JSON을 찾지 못했습니다."
+            : "폴더 불러오기를 눌러 workflow-output 폴더를 선택하세요.";
+          statusMessage.hidden = true;
+          return;
+        }
+
+        document.getElementById("emptyTitle").textContent = "단계별 JSON을 불러오세요";
+        statusMessage.hidden = true;
+        state.activeId = state.outputs[0].stage.id;
+        renderTabs();
+        renderActive();
+      }
+
+      function isEmpty(value) {
+        if (value === null || value === undefined) return true;
+        if (typeof value === "string") return value.trim().length === 0;
+        if (Array.isArray(value)) return value.every(isEmpty);
+        if (typeof value === "object") return Object.values(value).every(isEmpty);
+        return false;
+      }
+
+      function renderTabs() {
+        tabs.replaceChildren();
+        for (const output of state.outputs) {
+          const button = document.createElement("button");
+          button.className = "tab";
+          button.type = "button";
+          button.id = `tab-${output.stage.id}`;
+          button.role = "tab";
+          button.setAttribute("aria-controls", "viewer");
+          button.setAttribute("aria-selected", String(output.stage.id === state.activeId));
+          button.tabIndex = output.stage.id === state.activeId ? 0 : -1;
+          const number = document.createElement("span");
+          number.className = "tab-number";
+          number.textContent = output.stage.number;
+          const label = document.createElement("span");
+          label.textContent = output.stage.label;
+          button.append(number, label);
+          button.addEventListener("click", () => activate(output.stage.id));
+          button.addEventListener("keydown", handleTabKeydown);
+          tabs.append(button);
+        }
+        tabs.hidden = false;
+      }
+
+      function handleTabKeydown(event) {
+        const buttons = Array.from(tabs.querySelectorAll('[role="tab"]'));
+        const current = buttons.indexOf(event.currentTarget);
+        let next = current;
+        if (event.key === "ArrowRight") next = (current + 1) % buttons.length;
+        else if (event.key === "ArrowLeft") next = (current - 1 + buttons.length) % buttons.length;
+        else if (event.key === "Home") next = 0;
+        else if (event.key === "End") next = buttons.length - 1;
+        else return;
+        event.preventDefault();
+        buttons[next].focus();
+        activate(buttons[next].id.replace("tab-", ""));
+      }
+
+      function activate(id) {
+        state.activeId = id;
+        renderTabs();
+        renderActive();
+      }
+
+      function renderActive() {
+        const output = state.outputs.find((item) => item.stage.id === state.activeId);
+        if (!output) return;
+        welcome.hidden = true;
+        viewer.hidden = false;
+        document.getElementById("activeTitle").textContent = output.stage.file;
+        document.getElementById("activeMeta").textContent = `${output.stage.number} / ${output.stage.label} · ${formatBytes(output.file.size)}`;
+        expandAll.disabled = Boolean(output.error);
+        collapseAll.disabled = Boolean(output.error);
+        tree.replaceChildren();
+
+        if (output.error) {
+          const box = document.createElement("div");
+          box.className = "error-box";
+          const message = document.createElement("div");
+          message.textContent = `JSON을 읽을 수 없습니다: ${output.error.message}`;
+          const raw = document.createElement("pre");
+          raw.textContent = output.text;
+          box.append(message, raw);
+          tree.append(box);
+          return;
+        }
+
+        tree.append(renderStage(output.data, output.stage));
+      }
+
+      function el(tag, className = "", text = null) {
+        const node = document.createElement(tag);
+        if (className) node.className = className;
+        if (text !== null && text !== undefined) node.textContent = String(text);
+        return node;
+      }
+
+      function displayValue(value) {
+        if (value === null || value === undefined || value === "") return "Unknown";
+        if (Array.isArray(value)) return value.length ? value.map(displayValue).join(" · ") : "Unknown";
+        if (typeof value === "object") {
+          return Object.entries(value).filter(([, child]) => !isEmpty(child))
+            .map(([key, child]) => `${key}: ${displayValue(child)}`).join(" · ") || "Unknown";
+        }
+        return String(value);
+      }
+
+      function makeSection(title, detail = "") {
+        const section = el("section", "view-section");
+        const heading = el("div", "section-heading");
+        heading.append(el("h3", "", title));
+        if (detail) heading.append(el("span", "", detail));
+        section.append(heading);
+        return section;
+      }
+
+      function renderStageIntro(data, stage) {
+        const target = data.target_work || {};
+        const title = target.work_name || target.name || "Target Work";
+        const intro = el("header", "stage-intro");
+        const copy = el("div");
+        copy.append(el("p", "stage-kicker", `STAGE ${stage.number} · ${stage.label}`));
+        copy.append(el("h2", "", title));
+        if (target.purpose) copy.append(el("p", "", target.purpose));
+        intro.append(copy, el("span", "stage-count", `${stage.number} / 04`));
+
+        const boundary = el("div", "boundary-band");
+        const fields = [
+          ["Trigger", target.trigger],
+          ["Start", target.start_boundary],
+          ["End", target.end_boundary],
+          ["Output", target.expected_output]
+        ];
+        fields.forEach(([label, value]) => {
+          const item = el("div", "boundary-item");
+          item.append(el("span", "", label), el("strong", "", displayValue(value)));
+          boundary.append(item);
+        });
+        return [intro, boundary];
+      }
+
+      function factGrid(facts) {
+        const grid = el("div", "fact-grid");
+        facts.filter(([, value]) => !isEmpty(value)).forEach(([label, value]) => {
+          const fact = el("div");
+          fact.append(el("span", "fact-label", label), el("div", "fact-value", displayValue(value)));
+          grid.append(fact);
+        });
+        return grid;
+      }
+
+      function evidenceTag(type) {
+        const label = type || "UNKNOWN";
+        return el("span", `evidence-tag ${String(label).toLowerCase()}`, label);
+      }
+
+      function appendPlainItems(parent, items) {
+        const values = Array.isArray(items) ? items : (isEmpty(items) ? [] : [items]);
+        if (!values.length) {
+          parent.append(el("div", "empty-note", "확인된 항목 없음"));
+          return;
+        }
+        const list = el("ul", "plain-list");
+        values.forEach((item) => list.append(el("li", "", displayValue(item))));
+        parent.append(list);
+      }
+
+      function renderRawData(data) {
+        const details = el("details", "raw-data");
+        details.append(el("summary", "", "원본 데이터 보기"));
+        const rawTree = el("div", "tree");
+        Object.entries(data).forEach(([key, value]) => {
+          if (isEmpty(value)) return;
+          const row = renderValue(value, key, 0);
+          if (row) rawTree.append(row);
+        });
+        details.append(rawTree);
+        return details;
+      }
+
+      function renderStage(data, stage) {
+        const page = el("div", "stage-page");
+        renderStageIntro(data, stage).forEach((part) => page.append(part));
+
+        if (stage.id === "discover") renderDiscover(data, page);
+        else if (stage.id === "decompose") renderDecompose(data, page);
+        else if (stage.id === "deep-dive") renderDeepDive(data, page);
+        else if (stage.id === "map") renderMap(data, page);
+
+        page.append(renderRawData(data));
+        return page;
+      }
+
+      function renderDiscover(data, page) {
+        const inventory = data.work_inventory || [];
+        const section = makeSection("업무 인벤토리", `${inventory.length}개 업무`);
+        const grid = el("div", "work-grid");
+        inventory.forEach((work) => {
+          const card = el("article", "work-card");
+          const topline = el("div", "card-topline");
+          topline.append(el("span", "id-tag", work.work_id || "ID 없음"), evidenceTag(work.evidence_type));
+          card.append(topline, el("h4", "", work.work_name || "업무명 미기록"));
+          if (work.purpose) card.append(el("p", "", work.purpose));
+          card.append(factGrid([
+            ["Trigger", work.trigger], ["Output", work.output], ["Frequency", work.frequency],
+            ["Effort", work.effort], ["Pain / Rework", work.pain_rework]
+          ]));
+
+          const ratings = Object.entries(work.prioritization || {});
+          if (ratings.length) {
+            const ratingRow = el("div", "rating-row");
+            ratings.forEach(([name, rating]) => {
+              const chip = el("span", "rating-chip");
+              chip.append(el("span", "", name.replaceAll("_", " ")), el("strong", "", displayValue(rating.rating)));
+              ratingRow.append(chip);
+            });
+            card.append(ratingRow);
+          }
+          grid.append(card);
+        });
+        if (!inventory.length) grid.append(el("div", "empty-note", "확인된 업무가 없습니다."));
+        section.append(grid);
+        page.append(section);
+
+        const rationale = data.selection_rationale || {};
+        const support = makeSection("선정 근거와 확인 항목");
+        const columns = el("div", "map-support-grid");
+        columns.append(supportCard("선정 이유", rationale.selected_reasons), supportCard("비교 후보", rationale.alternatives_considered));
+        support.append(columns);
+        support.append(renderQuestionSection("미해결 질문", data.open_questions));
+        page.append(support);
+      }
+
+      function supportCard(title, values) {
+        const card = el("article", "support-card");
+        card.append(el("h4", "", title));
+        const items = Array.isArray(values) ? values : (isEmpty(values) ? [] : [values]);
+        if (!items.length) card.append(el("div", "empty-note", "확인된 항목 없음"));
+        else items.forEach((item) => card.append(el("div", "support-item", displayValue(item))));
+        return card;
+      }
+
+      function renderDecompose(data, page) {
+        const tasks = data.task_tree || [];
+        const section = makeSection("실제 작업 순서", `${tasks.length}개 상위 Task`);
+        section.append(renderTaskList(tasks));
+        page.append(section);
+
+        const markerSection = makeSection("판단·지식·예외 포인트");
+        const strip = el("div", "marker-strip");
+        strip.append(markerColumn("Decision", data.decision_points), markerColumn("Knowledge", data.knowledge_markers), markerColumn("Exception", data.exception_markers));
+        markerSection.append(strip, renderQuestionSection("미해결 질문", data.open_questions));
+        page.append(markerSection);
+      }
+
+      function renderTaskList(tasks) {
+        const list = el("ol", "flow-list");
+        tasks.forEach((task) => {
+          const item = el("li", "task-item");
+          const card = el("article", "task-card");
+          const title = el("div", "task-title-row");
+          title.append(el("span", "task-sequence", task.sequence || "•"), el("h4", "", task.name || "Task"), el("span", "task-id", task.task_id || ""));
+          card.append(title);
+          const facts = [];
+          if (task.input) facts.push(`입력: ${displayValue(task.input)}`);
+          if (task.output) facts.push(`산출: ${displayValue(task.output)}`);
+          if (task.condition) facts.push(`조건: ${displayValue(task.condition)}`);
+          if (task.repeats) facts.push(`반복: ${displayValue(task.repeats)}`);
+          if (task.evidence_type) facts.push(`근거: ${task.evidence_type}`);
+          if (facts.length) card.append(el("p", "task-facts", facts.join("  /  ")));
+          item.append(card);
+          if (task.sub_tasks && task.sub_tasks.length) {
+            const children = el("div", "task-children");
+            children.append(renderTaskList(task.sub_tasks));
+            item.append(children);
+          }
+          list.append(item);
+        });
+        return list;
+      }
+
+      function markerColumn(title, markers) {
+        const column = el("section", "marker-column");
+        const entries = markers || [];
+        column.append(el("h4", "", `${title} · ${entries.length}`));
+        if (!entries.length) column.append(el("div", "empty-note", "없음 또는 미기록"));
+        entries.forEach((marker) => {
+          const item = el("article", "marker-item");
+          const top = el("div", "card-topline");
+          top.append(el("span", "id-tag", marker.id || marker.task_id || "Marker"), evidenceTag(marker.evidence_type));
+          item.append(top, el("p", "", marker.description || marker.decision || ""));
+          column.append(item);
+        });
+        return column;
+      }
+
+      function renderDeepDive(data, page) {
+        const entries = data.knowledge_decision_map || [];
+        const coverage = makeSection("Deep Dive 판단 카드", `${entries.length}개 Task`);
+        const ribbon = el("div", "rating-row");
+        entries.forEach((entry) => ribbon.append(el("span", "rating-chip", entry.task_id || "Task")));
+        coverage.append(ribbon);
+        const grid = el("div", "decision-grid");
+        entries.forEach((entry) => grid.append(renderDecisionCard(entry)));
+        coverage.append(grid);
+        page.append(coverage);
+
+        const support = makeSection("검토가 필요한 항목");
+        support.append(renderQuestionSection("미해결 질문", data.open_questions));
+        support.append(renderQuestionSection("미확인 가설", data.unresolved_hypotheses));
+        support.append(renderQuestionSection("Back Loop", data.back_loop_required));
+        page.append(support);
+      }
+
+      function renderDecisionCard(entry) {
+        const card = el("article", "decision-card");
+        const topline = el("div", "card-topline");
+        topline.append(el("span", "id-tag", entry.task_id || "Task"), evidenceTag(entry.evidence?.type));
+        card.append(topline, el("h4", "", entry.decision || "Decision 미기록"));
+        card.append(el("p", "decision-meta", `근거 신뢰도: ${entry.evidence?.confidence || "Unknown"}`));
+
+        const details = el("div", "detail-columns");
+        details.append(detailBlock("Cue / Signal", entry.cues));
+        details.append(detailBlock("Rule / Heuristic", entry.rule_or_heuristic));
+        details.append(detailBlock("Required Knowledge", entry.required_knowledge));
+        details.append(detailBlock("Data Sources", entry.data_sources));
+        details.append(detailBlock("Reasoning", entry.reasoning));
+        details.append(detailBlock("Evidence Source", entry.evidence?.source));
+        card.append(details);
+
+        if (entry.exceptions?.length) {
+          const exceptionWrap = el("div", "exception-note");
+          exceptionWrap.append(el("strong", "", `예외 ${entry.exceptions.length}건`));
+          entry.exceptions.forEach((exception) => {
+            if (exception.trigger) exceptionWrap.append(el("p", "", `Trigger: ${displayValue(exception.trigger)}`));
+            if (exception.handling) exceptionWrap.append(el("p", "", `처리: ${displayValue(exception.handling)}`));
+            if (exception.details) exceptionWrap.append(el("p", "", displayValue(exception.details)));
+            if (exception.examples) exceptionWrap.append(el("p", "", `예: ${displayValue(exception.examples)}`));
+          });
+          card.append(exceptionWrap);
+        }
+
+        const escalation = entry.escalation || {};
+        if (!isEmpty(escalation)) card.append(detailBlock("Escalation", `조건: ${displayValue(escalation.condition)} / 대상: ${displayValue(escalation.target)}`));
+        return card;
+      }
+
+      function detailBlock(title, value) {
+        const block = el("div", "detail-block");
+        block.append(el("h5", "", title));
+        if (Array.isArray(value)) appendPlainItems(block, value);
+        else block.append(el("p", "", displayValue(value)));
+        return block;
+      }
+
+      function renderQuestionSection(title, values) {
+        const section = makeSection(title, `${Array.isArray(values) ? values.length : 0}건`);
+        appendPlainItems(section, values);
+        return section;
+      }
+
+      function renderMap(data, page) {
+        const workflow = data.workflow || {};
+        const nodes = workflow.nodes || [];
+        const edges = workflow.edges || [];
+        const taskTree = data.task_tree || [];
+        const overview = makeSection("상위 Task Overview", `${taskTree.length}개 상위 Task`);
+        overview.append(renderTaskOverview(taskTree));
+        page.append(overview);
+
+        const section = makeSection("As-Is 연결 흐름", `${nodes.length}개 Node · ${edges.length}개 연결`);
+        section.append(renderFlowchart(workflow, taskTree));
+        page.append(section);
+
+        const baseline = makeSection("Baseline", `${(data.baseline || []).length}개 지표`);
+        const tiles = el("div", "baseline-grid");
+        (data.baseline || []).forEach((metric) => {
+          const tile = el("article", `metric-tile ${String(metric.measurement_status || "unknown").toLowerCase()}`);
+          const head = el("div", "metric-head");
+          head.append(el("strong", "", metric.metric || "Metric"));
+          head.append(el("span", `status-tag ${String(metric.measurement_status || "unknown").toLowerCase()}`, metric.measurement_status || "UNKNOWN"));
+          tile.append(head, el("div", "metric-value", displayValue(metric.current_value)));
+          if (metric.evidence) tile.append(el("p", "metric-evidence", `근거 · ${displayValue(metric.evidence)}`));
+          if (metric.measurement_plan) tile.append(el("p", "metric-plan", `측정 방법 · ${displayValue(metric.measurement_plan)}`));
+          tiles.append(tile);
+        });
+        baseline.append(tiles);
+        page.append(baseline);
+
+        const support = makeSection("전달·반복·예외");
+        const supportGrid = el("div", "map-support-grid");
+        supportGrid.append(collectionCard("Handoffs", workflow.handoffs, (item) => `${item.from_actor || "Unknown"} → ${item.to_actor || "Unknown"} · ${displayValue(item.information)}`));
+        supportGrid.append(collectionCard("Loops", workflow.loops, (item) => `${item.trigger || item.loop_id} · 반복 ${displayValue(item.repeat_count)}`));
+        supportGrid.append(collectionCard("Exceptions", workflow.exceptions, (item) => `${item.trigger || item.exception_id} · 재합류 ${displayValue(item.rejoin_node_id)}`));
+        supportGrid.append(collectionCard("Waits / Escalations", [...(workflow.waits || []), ...(workflow.escalations || [])], displayValue));
+        support.append(supportGrid, renderQuestionSection("확인 필요", data.open_questions));
+        page.append(support);
+      }
+
+      function renderTaskOverview(taskTree) {
+        const overview = el("div", "task-overview");
+        taskTree.forEach((task) => {
+          const item = el("article", `task-overview-item group-${task.task_id}`);
+          const heading = el("div", "task-overview-head");
+          heading.append(el("span", "task-overview-id", task.task_id));
+          heading.append(el("h4", "", task.name || "상위 Task"));
+          item.append(heading);
+          if (task.output) item.append(el("p", "task-overview-output", `산출 · ${task.output}`));
+
+          const steps = el("ul", "task-overview-steps");
+          const appendSteps = (tasks) => {
+            tasks.forEach((subtask) => {
+              if (subtask.sub_tasks?.length) {
+                appendSteps(subtask.sub_tasks);
+                return;
+              }
+              const step = el("li", "task-overview-step");
+              step.append(el("span", "", subtask.task_id), el("div", "", subtask.name || "하위 Task"));
+              steps.append(step);
+            });
+          };
+          appendSteps(task.sub_tasks || []);
+          if (steps.childElementCount) item.append(steps);
+          overview.append(item);
+        });
+        return overview;
+      }
+
+      function makeTaskGroupMap(taskTree, nodes) {
+        const groupByTask = new Map();
+        const assignGroup = (tasks, groupId) => {
+          tasks.forEach((task) => {
+            if (task.sub_tasks?.length) assignGroup(task.sub_tasks, groupId);
+            else groupByTask.set(task.task_id, groupId);
+          });
+        };
+        taskTree.forEach((group) => assignGroup(group.sub_tasks || [], group.task_id));
+
+        const groupByNode = new Map();
+        nodes.forEach((node) => {
+          const taskRef = (node.source_refs || []).find((ref) => ref.type === "task_id");
+          const groupId = taskRef && groupByTask.get(taskRef.value);
+          if (groupId) groupByNode.set(node.node_id, groupId);
+        });
+        return groupByNode;
+      }
+
+      function renderFlowchart(workflow, taskTree) {
+        const nodes = workflow.nodes || [];
+        const edges = workflow.edges || [];
+        const nodeById = new Map(nodes.map((node) => [node.node_id, node]));
+        const groupByNode = makeTaskGroupMap(taskTree, nodes);
+        const outgoing = new Map();
+        const incoming = new Set(edges.map((edge) => edge.to));
+        edges.forEach((edge) => {
+          if (!outgoing.has(edge.from)) outgoing.set(edge.from, []);
+          outgoing.get(edge.from).push(edge);
+        });
+
+        const chart = el("div", "flowchart");
+        const visited = new Set();
+        const start = nodes.find((node) => node.node_type === "TRIGGER");
+        if (start) chart.append(renderFlowNode(start.node_id, nodeById, outgoing, visited, new Set(), groupByNode));
+
+        const remaining = nodes.filter((node) => !visited.has(node.node_id));
+        if (remaining.length) {
+          const subsection = el("section", "flowchart-subsection");
+          subsection.append(el("h4", "", "연결이 확인된 별도 구간 · 미연결 Node"));
+          const pendingIds = new Set(remaining.map((node) => node.node_id));
+          const hasPendingPredecessor = new Set(edges
+            .filter((edge) => pendingIds.has(edge.from) && pendingIds.has(edge.to))
+            .map((edge) => edge.to));
+          const starts = remaining.filter((node) => !hasPendingPredecessor.has(node.node_id));
+          starts.sort((left, right) => Number((outgoing.get(right.node_id) || []).length > 0) - Number((outgoing.get(left.node_id) || []).length > 0));
+          const detachedChart = el("div", "flowchart");
+          starts.forEach((node) => {
+            if (visited.has(node.node_id)) return;
+            if (!incoming.has(node.node_id)) detachedChart.append(flowStartGap(node));
+            detachedChart.append(renderFlowNode(node.node_id, nodeById, outgoing, visited, new Set(), groupByNode));
+          });
+          remaining.forEach((node) => {
+            if (!visited.has(node.node_id)) detachedChart.append(renderFlowNode(node.node_id, nodeById, outgoing, visited, new Set(), groupByNode));
+          });
+          subsection.append(detachedChart);
+          chart.append(subsection);
+        }
+        return chart;
+      }
+
+      function flowStartGap(node) {
+        return el("div", "flow-unlinked-start", `선행 연결 없음 · ${node.node_id} ${node.activity} · 이 Node로 들어오는 Edge가 Map에 기록되지 않음`);
+      }
+
+      function renderFlowNode(nodeId, nodeById, outgoing, visited, ancestors, groupByNode) {
+        const node = nodeById.get(nodeId);
+        if (!node) return el("div", "flow-stop", `Node 정보를 찾을 수 없음 · ${nodeId}`);
+
+        visited.add(nodeId);
+        const branch = el("div", "flow-node-wrap");
+        branch.append(flowchartNodeCard(node, groupByNode.get(nodeId)));
+        const nextAncestors = new Set(ancestors);
+        nextAncestors.add(nodeId);
+
+        const connections = outgoing.get(nodeId) || [];
+        const forward = connections.filter((edge) => !nextAncestors.has(edge.to) && !visited.has(edge.to));
+        const returns = connections.filter((edge) => nextAncestors.has(edge.to));
+        const joins = connections.filter((edge) => !nextAncestors.has(edge.to) && visited.has(edge.to));
+
+        returns.forEach((edge) => branch.append(flowReturn(edge, nodeById)));
+        joins.forEach((edge) => branch.append(flowJoin(edge, nodeById)));
+
+        if (node.node_type === "DECISION" && forward.length === 1) {
+          const choices = el("div", "flow-branches");
+          const knownLane = el("div", "flow-branch");
+          knownLane.append(el("span", "flow-branch-label", forward[0].label || forward[0].condition || "기록된 분기"));
+          knownLane.append(flowConnector(forward[0], false));
+          knownLane.append(renderFlowNode(forward[0].to, nodeById, outgoing, visited, nextAncestors, groupByNode));
+          const unknownLane = el("div", "flow-branch");
+          unknownLane.append(el("span", "flow-branch-label", "다른 분기 경로 미기록"));
+          unknownLane.append(el("div", "flow-stop", "조건과 후속 Node 확인 필요"));
+          choices.append(knownLane, unknownLane);
+          branch.append(choices);
+        } else if (forward.length === 1) {
+          branch.append(flowConnector(forward[0]));
+          branch.append(renderFlowNode(forward[0].to, nodeById, outgoing, visited, nextAncestors, groupByNode));
+        } else if (forward.length > 1) {
+          const choices = el("div", "flow-branches");
+          forward.forEach((edge) => {
+            const lane = el("div", "flow-branch");
+            lane.append(el("span", "flow-branch-label", edge.label || edge.condition || "분기"));
+            lane.append(flowConnector(edge, false));
+            lane.append(renderFlowNode(edge.to, nodeById, outgoing, visited, nextAncestors, groupByNode));
+            choices.append(lane);
+          });
+          branch.append(choices);
+        } else if (!returns.length && !joins.length && node.node_type !== "END" && node.node_type !== "OUTPUT") {
+          branch.append(el("div", "flow-stop", "다음 연결이 Map에 기록되지 않음"));
+        }
+        return branch;
+      }
+
+      function flowchartNodeCard(node, groupId) {
+        const groupClass = groupId ? ` group-${groupId}` : "";
+        const card = el("div", `flowchart-node ${String(node.node_type || "").toLowerCase()}${groupClass}`);
+        card.append(el("small", "", `${node.node_id} · ${node.node_type}${groupId ? ` · ${groupId}` : ""}`));
+        card.append(el("strong", "", node.activity || "활동 설명 없음"));
+        return card;
+      }
+
+      function flowConnector(edge, includeLabel = true) {
+        const connector = el("div", "flow-connector");
+        const label = edge.label || edge.condition;
+        if (includeLabel && label) connector.append(el("span", "flow-connector-label", label));
+        if (edge.evidence?.type) connector.append(el("span", "flow-evidence", edge.evidence.type));
+        connector.append(el("span", "flow-connector-arrow", "↓"));
+        return connector;
+      }
+
+      function flowReturn(edge, nodeById) {
+        const target = nodeById.get(edge.to);
+        return el("div", "flow-backlink", `↶ ${edge.label || "반복"} · 다시 ${target?.node_id || edge.to} (${target?.activity || "Node"})`);
+      }
+
+      function flowJoin(edge, nodeById) {
+        const target = nodeById.get(edge.to);
+        return el("div", "flow-join", `↗ ${edge.label || "합류"} · 앞서 표시한 ${target?.node_id || edge.to}로 연결`);
+      }
+
+      function mapNodeCard(node, fallbackId) {
+        const type = node?.node_type || "UNKNOWN";
+        const kind = type.toLowerCase();
+        const card = el("div", `map-node ${kind}`);
+        card.append(el("small", "", `${node?.node_id || fallbackId} · ${type}`));
+        card.append(el("strong", "", node?.activity || "Node 정보 없음"));
+        return card;
+      }
+
+      function collectionCard(title, items, formatter) {
+        const card = el("article", "support-card");
+        card.append(el("h4", "", `${title} · ${items?.length || 0}`));
+        if (!items?.length) card.append(el("div", "empty-note", "해당 항목 없음"));
+        else items.forEach((item) => card.append(el("div", "support-item", formatter(item))));
+        return card;
+      }
+
+      function renderValue(value, key, level) {
+        if (Array.isArray(value) || (value !== null && typeof value === "object")) {
+          const isArray = Array.isArray(value);
+          const entries = isArray ? value : Object.entries(value).filter(([, child]) => !isEmpty(child));
+          if (!entries.length) return null;
+
+          const details = document.createElement("details");
+          details.className = "json-group";
+          if (level === 0) details.open = true;
+          const summary = document.createElement("summary");
+          const keyElement = document.createElement("span");
+          keyElement.className = "json-key";
+          keyElement.textContent = key;
+          const count = document.createElement("span");
+          count.className = "json-count";
+          count.textContent = isArray ? `[${entries.length}]` : `{${entries.length}}`;
+          summary.append(keyElement, count);
+          const children = document.createElement("div");
+          children.className = "json-children";
+
+          if (isArray) {
+            entries.forEach((child, index) => {
+              const item = renderValue(child, `Item ${String(index + 1).padStart(2, "0")}`, level + 1);
+              if (item) children.append(item);
+            });
+          } else {
+            entries.forEach(([childKey, child]) => {
+              const item = renderValue(child, childKey, level + 1);
+              if (item) children.append(item);
+            });
+          }
+
+          details.append(summary, children);
+          return details;
+        }
+
+        const row = document.createElement("div");
+        row.className = "json-row";
+        const keyElement = document.createElement("span");
+        keyElement.className = "json-key";
+        keyElement.textContent = key;
+        const valueElement = document.createElement("span");
+        valueElement.className = "json-value";
+
+        if (typeof value === "string") {
+          valueElement.textContent = JSON.stringify(value);
+          if (/^unknown$/i.test(value.trim())) valueElement.classList.add("unknown");
+        } else if (typeof value === "number") {
+          valueElement.textContent = String(value);
+          valueElement.classList.add("number");
+        } else if (typeof value === "boolean") {
+          valueElement.textContent = String(value);
+          valueElement.classList.add("boolean");
+        } else {
+          valueElement.textContent = "null";
+          valueElement.classList.add("null");
+        }
+
+        row.append(keyElement, valueElement);
+        return row;
+      }
+
+      async function copyActiveJson() {
+        const output = state.outputs.find((item) => item.stage.id === state.activeId);
+        if (!output || output.error) return;
+        try {
+          await navigator.clipboard.writeText(output.text);
+        } catch {
+          const textarea = document.createElement("textarea");
+          textarea.value = output.text;
+          textarea.style.position = "fixed";
+          textarea.style.opacity = "0";
+          document.body.append(textarea);
+          textarea.select();
+          document.execCommand("copy");
+          textarea.remove();
+        }
+        const button = document.getElementById("copyJson");
+        button.textContent = "복사됨";
+        window.setTimeout(() => { button.textContent = "JSON 복사"; }, 1200);
+      }
+
+      function formatBytes(bytes) {
+        if (bytes < 1024) return `${bytes} B`;
+        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+      }
+
+    })();
+  </script>
+</body>
+</html>
