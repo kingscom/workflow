@@ -9,13 +9,13 @@
 | 1. Discover | `workflow-discover` | 사용자의 역할과 실제 업무를 파악하고, 사용자가 분석할 Target Work와 경계를 선택하도록 돕습니다. | 사용 가능 |
 | 2. Decompose | `workflow-decompose` | 최근 실제 사례를 Work → Task → Sub-task로 분해하고, 사용자가 Task Tree를 확인하도록 돕습니다. | 사용 가능 |
 | 3. Deep Dive | `workflow-deep-dive` | 실제 사례를 통해 판단 단서, 기준, 지식, 추론, 예외, Escalation을 근거 기반으로 외재화합니다. | 사용 가능 |
-| 4. Map | `workflow-map` | Deep Dive 결과에서 end-to-end 흐름, 분기, handoff, 반복 및 baseline을 구조화합니다. | 다음 단계로 참조됨; Skill 미작성 |
-| 5. 정의 예정 | 미정 | 범위와 산출물이 아직 정의되지 않았습니다. | 미작성 |
+| 4. Map | `workflow-map` | Stage 1~3 결과를 연결해 As-Is 흐름, 분기, handoff, 반복 및 baseline을 구조화합니다. | 사용 가능 |
+| 5. Diagnose | `workflow-diagnose` | Map과 Baseline을 바탕으로 pain point, bottleneck, root cause와 검증된 개선 기회를 분석합니다. | Skill 미작성 |
 | 6. 정의 예정 | 미정 | 범위와 산출물이 아직 정의되지 않았습니다. | 미작성 |
 | 7. 정의 예정 | 미정 | 범위와 산출물이 아직 정의되지 않았습니다. | 미작성 |
 | 8. 정의 예정 | 미정 | 범위와 산출물이 아직 정의되지 않았습니다. | 미작성 |
 
-현재 저장소에서 사용할 수 있는 Skill은 1~3단계입니다. 4단계 `workflow-map`은 Deep Dive Handoff에서 다음 단계로 참조되지만 Skill은 아직 없습니다. 5~8단계의 이름과 책임은 확정되지 않았으므로, 이 README는 이를 임의로 추정하지 않습니다.
+현재 저장소에서 사용할 수 있는 Skill은 1~4단계입니다. Stage 5 `workflow-diagnose`는 Map Handoff의 다음 단계로 지정되어 있지만 Skill은 아직 작성되지 않았습니다. Stage 6~8의 이름과 책임은 확정되지 않았으므로, 이 README는 이를 임의로 추정하지 않습니다.
 
 ## 시작하기
 
@@ -49,9 +49,19 @@ Decompose 완료 후 `workflow-deep-dive`를 실행하거나, 예를 들어 “T
 - 모든 Task를 같은 깊이로 분석하지 않으며, AI가 일반지식을 사용자 암묵지로 보충하지 않습니다.
 - 사용자가 Tacit Knowledge & Decision Map과 Handoff를 확인한 뒤 `workflow-output/deep-dive-result.json`을 생성합니다.
 
+### 4단계: Map
+
+Deep Dive 완료 후 `workflow-map`을 실행하거나, 예를 들어 “Stage 1~3 결과를 연결해 현재 업무 흐름과 Baseline을 Map으로 만들고 싶습니다”라고 요청합니다.
+
+- `workflow-output/deep-dive-result.json`을 우선 읽고 필요한 경우 `decompose-result.json`, `discover-result.json`을 참조합니다.
+- 앞 단계의 Task ID와 Evidence를 유지하며 실제 Task, Decision, Branch, Handoff, Wait, Loop, Exception을 End-to-End As-Is Workflow로 연결합니다.
+- 먼저 초안을 만든 뒤 불확실한 연결만 질문하고, 최근 실제 사례 Walk-through로 순서와 누락을 확인합니다.
+- Baseline은 `MEASURED`, `ESTIMATED`, `UNKNOWN`을 구분합니다. Stage 4에서는 진단, 재설계 또는 자동화 제안을 하지 않습니다.
+- 사용자가 Workflow와 Map Handoff를 확인한 뒤 `workflow-output/map-result.json`을 생성합니다.
+
 ### 다음 단계
 
-Deep Dive Handoff의 `next_stage`는 `workflow-map`을 지정합니다. Map Skill이 구현되기 전까지 Stage 4는 자동으로 진행되지 않습니다.
+Deep Dive Handoff의 `next_stage`는 `workflow-map`을 지정합니다. Map Handoff의 `next_stage`는 `workflow-diagnose`를 지정합니다; Stage 5 Skill은 아직 작성되지 않았습니다.
 
 ## 산출물 연결
 
@@ -59,7 +69,8 @@ Deep Dive Handoff의 `next_stage`는 `workflow-map`을 지정합니다. Map Skil
 workflow-output/
 ├── discover-result.json   # Stage 1 결과
 ├── decompose-result.json  # Stage 2 결과 및 Stage 3 입력
-└── deep-dive-result.json  # Stage 3 결과 및 Stage 4 인계
+├── deep-dive-result.json  # Stage 3 결과 및 Stage 4 인계
+└── map-result.json        # Stage 4 결과 및 Stage 5 인계
 ```
 
 각 단계는 앞 단계의 결과를 읽되, 앞 단계 파일을 임의로 수정하거나 덮어쓰지 않습니다. 분해 과정에서 Discover 경계가 실제 업무와 다르다는 점이 드러나면 Discover로 되돌아가 사용자 확인 후 경계를 보정합니다.
@@ -84,7 +95,11 @@ workflow-output/
     ├── SKILL.md
     ├── references/
     └── examples/
-└── workflow-deep-dive/
+├── workflow-deep-dive/
+    ├── SKILL.md
+    ├── references/
+    └── examples/
+└── workflow-map/
     ├── SKILL.md
     ├── references/
     └── examples/
