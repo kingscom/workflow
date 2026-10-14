@@ -10,12 +10,12 @@
 | 2. Decompose | `workflow-decompose` | 최근 실제 사례를 Work → Task → Sub-task로 분해하고, 사용자가 Task Tree를 확인하도록 돕습니다. | 사용 가능 |
 | 3. Deep Dive | `workflow-deep-dive` | 실제 사례를 통해 판단 단서, 기준, 지식, 추론, 예외, Escalation을 근거 기반으로 외재화합니다. | 사용 가능 |
 | 4. Map | `workflow-map` | Stage 1~3 결과를 연결해 As-Is 흐름, 분기, handoff, 반복 및 baseline을 구조화합니다. | 사용 가능 |
-| 5. Diagnose | `workflow-diagnose` | Map과 Baseline을 바탕으로 pain point, bottleneck, root cause와 검증된 개선 기회를 분석합니다. | Skill 미작성 |
-| 6. 정의 예정 | 미정 | 범위와 산출물이 아직 정의되지 않았습니다. | 미작성 |
+| 5. Diagnose | `workflow-diagnose` | Map과 Baseline을 바탕으로 Pain Point, Problem, Root Cause를 검증하고 해결책 중립적 Opportunity를 도출합니다. | 사용 가능 |
+| 6. Redesign | `workflow-redesign` | Diagnose에서 확인한 Opportunity를 바탕으로 개선안을 설계하고 가치·실현가능성·위험을 검토합니다. | Skill 미작성 |
 | 7. 정의 예정 | 미정 | 범위와 산출물이 아직 정의되지 않았습니다. | 미작성 |
 | 8. 정의 예정 | 미정 | 범위와 산출물이 아직 정의되지 않았습니다. | 미작성 |
 
-현재 저장소에서 사용할 수 있는 Skill은 1~4단계입니다. Stage 5 `workflow-diagnose`는 Map Handoff의 다음 단계로 지정되어 있지만 Skill은 아직 작성되지 않았습니다. Stage 6~8의 이름과 책임은 확정되지 않았으므로, 이 README는 이를 임의로 추정하지 않습니다.
+현재 저장소에서 사용할 수 있는 Skill은 1~5단계입니다. Stage 6 `workflow-redesign`은 Diagnose Handoff의 다음 단계로 정의되어 있지만 Skill은 아직 작성되지 않았습니다. Stage 7~8의 이름과 책임은 확정되지 않았으므로 임의로 추정하지 않습니다.
 
 ## 시작하기
 
@@ -61,7 +61,17 @@ Deep Dive 완료 후 `workflow-map`을 실행하거나, 예를 들어 “Stage 1
 
 ### 다음 단계
 
-Deep Dive Handoff의 `next_stage`는 `workflow-map`을 지정합니다. Map Handoff의 `next_stage`는 `workflow-diagnose`를 지정합니다; Stage 5 Skill은 아직 작성되지 않았습니다.
+Deep Dive Handoff의 `next_stage`는 `workflow-map`을 지정합니다. Map Handoff의 `next_stage`는 `workflow-diagnose`를 지정합니다. Diagnose는 검증된 문제·원인·Opportunity와 남은 검증 계획을 `workflow-output/diagnose-result.json`에 전달하며, 다음 단계는 `workflow-redesign`입니다. Diagnose에서는 해결책이나 AI/자동화 적합성을 제안하지 않습니다.
+
+### 5단계: Diagnose
+
+Map 완료 후 `workflow-diagnose`를 실행하거나, 예를 들어 “Map에서 확인된 업무 문제의 원인과 개선기회를 검증하고 싶습니다”라고 요청합니다.
+
+- `workflow-output/map-result.json`을 읽어 As-Is 흐름, Handoff, Wait, Loop, Exception 및 Baseline의 근거를 점검합니다.
+- Observation, Pain Point, Problem, Root Cause, Constraint를 구분하고, 해석은 검증 전까지 `HYPOTHESIS`로 유지합니다.
+- 실제 사례·Artifact·Stakeholder·Data·Counterexample로 Root Cause를 검증합니다. 검증할 수 없는 가설은 Validation Plan과 함께 남깁니다.
+- Opportunity는 해결 대상과 기대 성과만 정의합니다. AI, Agent, RPA 또는 자동화를 미리 해결책으로 선택하지 않습니다.
+- 사용자가 Opportunity Map을 확인한 뒤 `workflow-output/diagnose-result.json`을 생성합니다. 이전 Stage 결과 파일은 수정하지 않습니다.
 
 ## 산출물 연결
 
@@ -70,7 +80,8 @@ workflow-output/
 ├── discover-result.json   # Stage 1 결과
 ├── decompose-result.json  # Stage 2 결과 및 Stage 3 입력
 ├── deep-dive-result.json  # Stage 3 결과 및 Stage 4 인계
-└── map-result.json        # Stage 4 결과 및 Stage 5 인계
+├── map-result.json        # Stage 4 결과 및 Stage 5 입력
+└── diagnose-result.json   # Stage 5 결과 및 Stage 6 인계
 ```
 
 각 단계는 앞 단계의 결과를 읽되, 앞 단계 파일을 임의로 수정하거나 덮어쓰지 않습니다. 분해 과정에서 Discover 경계가 실제 업무와 다르다는 점이 드러나면 Discover로 되돌아가 사용자 확인 후 경계를 보정합니다.
@@ -100,6 +111,10 @@ workflow-output/
     ├── references/
     └── examples/
 └── workflow-map/
+    ├── SKILL.md
+    ├── references/
+    └── examples/
+└── workflow-diagnose/
     ├── SKILL.md
     ├── references/
     └── examples/
