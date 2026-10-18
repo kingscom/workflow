@@ -651,6 +651,7 @@
     }
 
     .work-grid, .decision-grid, .baseline-grid, .map-support-grid { gap: 14px; }
+    .work-grid { grid-template-columns: 1fr; }
 
     .work-card, .decision-card, .metric-tile, .support-card {
       border-color: var(--line);
@@ -663,11 +664,20 @@
       transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
     }
 
+    .work-card.is-target {
+      border-color: #a9cec5;
+      border-left: 4px solid var(--stage-accent);
+      background: linear-gradient(110deg, var(--stage-tint), white 42%);
+    }
+
     .work-card:hover {
       transform: translateY(-2px);
       border-color: #c2d8d3;
       box-shadow: 0 9px 22px rgba(30, 55, 66, .08);
     }
+
+    .card-badges { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+    .target-badge { display: inline-flex; align-items: center; padding: 5px 9px; border-radius: 999px; color: var(--stage-accent); background: var(--stage-tint); font-size: 10px; font-weight: 700; }
 
     .work-card h4, .decision-card h4 { font-size: 15px; letter-spacing: -.015em; }
     .work-card > p { color: #4e6671; font-size: 13px; }
