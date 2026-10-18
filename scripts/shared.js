@@ -55,7 +55,7 @@
         copy.append(el("p", "stage-kicker", `STAGE ${stage.number} · ${stage.label}`));
         copy.append(el("h2", "", title));
         if (target.purpose) copy.append(el("p", "", target.purpose));
-        intro.append(copy, el("span", "stage-count", `${stage.number} / 04`));
+        intro.append(copy, el("span", "stage-count", `${stage.number} / ${stage.total || "06"}`));
 
         const boundary = el("div", "boundary-band");
         const fields = [

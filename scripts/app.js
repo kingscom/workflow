@@ -5,7 +5,9 @@
         { id: "discover", file: "discover-result.json", label: "Discover", number: "01" },
         { id: "decompose", file: "decompose-result.json", label: "Decompose", number: "02" },
         { id: "deep-dive", file: "deep-dive-result.json", label: "Deep Dive", number: "03" },
-        { id: "map", file: "map-result.json", label: "Map", number: "04" }
+        { id: "map", file: "map-result.json", label: "Map", number: "04" },
+        { id: "diagnose", file: "diagnose-result.json", label: "Diagnose", number: "05" },
+        { id: "redesign", file: "redesign-result.json", label: "Redesign", number: "06" }
       ];
 
       const state = { outputs: [], activeId: null };
