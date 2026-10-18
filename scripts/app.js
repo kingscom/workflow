@@ -7,8 +7,10 @@
         { id: "deep-dive", file: "deep-dive-result.json", label: "Deep Dive", number: "03" },
         { id: "map", file: "map-result.json", label: "Map", number: "04" },
         { id: "diagnose", file: "diagnose-result.json", label: "Diagnose", number: "05" },
-        { id: "redesign", file: "redesign-result.json", label: "Redesign", number: "06" }
+        { id: "redesign", file: "redesign-result.json", label: "Redesign", number: "06" },
+        { id: "build", file: "build-result.json", label: "Build", number: "07" }
       ];
+      stages.forEach((stage) => { stage.total = String(stages.length).padStart(2, "0"); });
 
       const state = { outputs: [], activeId: null };
       const jsonFiles = document.getElementById("jsonFiles");
